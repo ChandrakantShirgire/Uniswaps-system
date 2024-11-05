@@ -1,222 +1,356 @@
-#include <iostream>
-#include <vector>
-#include <string>
-using namespace std;
 
+#include <iostream>     // For input/output
+#include <vector>       // For dynamic arrays
+#include <iomanip>      // For formatting output
+#include <string>       // For handling strings
+#include <limits>       // For handling limits
+#include <unordered_map> // For hash-based maps
+#include <exception>    // For error handling
+using namespace std;    // Avoids needing 'std::' before standard library names
+
+// Custom error for invalid email
+class InvalidEmailException : public exception {
+public:
+    const char* what() const throw() { // Gives custom error message
+        return "Invalid email format. Please enter a valid email address.";
+    }
+};
+
+// Item base class
 class Item {
 protected:
-    string owner;
-    string description;
-    string condition;
-    double price;
-    bool isAvailable;
-    vector<string> swapHistory;
+    string owner;             // Owner’s name
+    string description;       // Item description
+    string condition;         // Item condition (e.g., new, used)
+    double price;             // Item price
+    int age;                  // Age in months
+    bool isAvailable;         // Availability status
+    vector<string> swapHistory; // Track of past owners
 
 public:
-    Item(string o, string d, string c, double p) : owner(o), description(d), condition(c), price(p), isAvailable(true) {
-        if (p <= 0) {
-            cout << "Invalid price set for item. Setting price to 0 by default.\n";
+    // Constructor to set item details
+    Item(string o, string d, string c, double p, int a)
+        : owner(o), description(d), condition(c), price(p), age(a), isAvailable(true) {
+        if (p <= 0) { // Set default price if invalid
+            cout << "Invalid price set. Defaulting to 0.\n";
             price = 0.0;
+        }
+        if (a < 0) { // Set default age if invalid
+            cout << "Invalid age set. Defaulting to 0.\n";
+            age = 0;
         }
     }
 
+    virtual ~Item() {} // Base destructor
+
+    // Show item details
     virtual void displayInfo() {
-        cout << "Owner: " << owner << ", Description: " << description << ", Condition: " << condition
-             << ", Price: ₹" << price << ", Availability: " << (isAvailable ? "Available" : "Not Available") << endl;
+        cout << setw(15) << left << owner
+             << setw(25) << left << description
+             << setw(15) << left << condition
+             << setw(10) << left << price
+             << setw(10) << left << age << " months "
+             << (isAvailable ? "Available" : "Not Available") << endl;
     }
 
+    // Swap ownership of item
     virtual void swapItem(string newOwner) {
         if (isAvailable) {
             owner = newOwner;
             isAvailable = false;
-            swapHistory.push_back(newOwner);
-            cout << "Item successfully swapped to " << newOwner << endl;
+            swapHistory.push_back(newOwner); // Add new owner to history
+            cout << "Item now belongs to " << newOwner << endl;
         } else {
-            cout << "Item is not available for swapping.\n";
+            cout << "Item not available for swap.\n";
         }
     }
 
+    // Show past owners
     virtual void showSwapHistory() {
-        cout << "Swap history for item: ";
+        cout << "Swap history: ";
         for (const string& user : swapHistory) {
             cout << user << " ";
         }
         cout << endl;
     }
 
+    // Set new price, checks if valid
     virtual void setPrice(double newPrice) {
         if (newPrice > 0) {
             price = newPrice;
-            cout << "Price updated successfully to ₹" << price << endl;
+            cout << "Price updated to " << price << endl;
         } else {
-            cout << "Invalid price. Please set a positive value.\n";
+            cout << "Invalid price.\n";
         }
     }
 
-    virtual ~Item() {}
+    // Mark item as available
+    virtual void sellItem() {
+        cout << "Item is now available.\n";
+        isAvailable = true;
+    }
+
+    virtual string getCategory() = 0; // Must define in subclass
+
+    // Getters for price, availability, age
+    double getPrice() { return price; }
+    bool getAvailability() { return isAvailable; }
+    int getAge() { return age; }
+
+    // Overloaded methods to update details
+    void updateDetails(double newPrice) { setPrice(newPrice); }
+    void updateDetails(string newCondition) {
+        condition = newCondition;
+        cout << "Condition updated to " << condition << endl;
+    }
+    void updateDetails(int newAge) {
+        if (newAge >= 0) {
+            age = newAge;
+            cout << "Age updated to " << age << " months\n";
+        } else {
+            cout << "Invalid age.\n";
+        }
+    }
 };
 
+// Book class, inherits Item
 class Book : public Item {
 private:
     string title;
     string author;
 
 public:
-    Book(string o, string d, string c, double p, string t, string a)
-    : Item(o, d, c, p), title(t), author(a) {}
+    Book(string o, string d, string c, double p, int a, string t, string au)
+        : Item(o, d, c, p, a), title(t), author(au) {}
 
+    // Show book details
     void displayInfo() override {
-        cout << "Book Title: " << title << ", Author: " << author << endl;
-        Item::displayInfo();
+        cout << "Book: " << title << " by " << author << endl;
+        Item::displayInfo(); // Call base method
     }
 
-    void swapItem(string newOwner) override {
-        cout << "Swapping book titled '" << title << "'...\n";
-        Item::swapItem(newOwner);
+    string getCategory() override { return "Book"; }
+
+    void sellItem() override {
+        cout << "Selling book: " << title << endl;
+        isAvailable = true;
     }
 };
 
+// Electronics class, inherits Item
 class Electronics : public Item {
 private:
     string model;
     string brand;
 
 public:
-    Electronics(string o, string d, string c, double p, string m, string b)
-    : Item(o, d, c, p), model(m), brand(b) {}
+    Electronics(string o, string d, string c, double p, int a, string m, string b)
+        : Item(o, d, c, p, a), model(m), brand(b) {}
 
+    // Show electronics details
     void displayInfo() override {
-        cout << "Electronics Model: " << model << ", Brand: " << brand << endl;
+        cout << "Electronics: " << brand << " " << model << endl;
         Item::displayInfo();
     }
 
-    void swapItem(string newOwner) override {
-        cout << "Swapping electronics model '" << model << "'...\n";
-        Item::swapItem(newOwner);
+    string getCategory() override { return "Electronics"; }
+
+    void sellItem() override {
+        cout << "Selling electronics: " << brand << " " << model << endl;
+        isAvailable = true;
     }
 };
 
-class Clothes : public Item {
-private:
-    string size;
-    string type;
-
-public:
-    Clothes(string o, string d, string c, double p, string s, string t)
-    : Item(o, d, c, p), size(s), type(t) {}
-
-    void displayInfo() override {
-        cout << "Clothes Type: " << type << ", Size: " << size << endl;
-        Item::displayInfo();
-    }
-
-    void swapItem(string newOwner) override {
-        cout << "Swapping clothes of size '" << size << "'...\n";
-        Item::swapItem(newOwner);
-    }
-};
-
-class Furniture : public Item {
-private:
-    string furnitureType;
-    string material;
-
-public:
-    Furniture(string o, string d, string c, double p, string ft, string m)
-    : Item(o, d, c, p), furnitureType(ft), material(m) {}
-
-    void displayInfo() override {
-        cout << "Furniture Type: " << furnitureType << ", Material: " << material << endl;
-        Item::displayInfo();
-    }
-
-    void swapItem(string newOwner) override {
-        cout << "Swapping furniture of type '" << furnitureType << "'...\n";
-        Item::swapItem(newOwner);
-    }
-};
-
-class Gadget : public Item {
-private:
-    string gadgetType;
-    string brand;
-
-public:
-    Gadget(string o, string d, string c, double p, string gt, string b)
-    : Item(o, d, c, p), gadgetType(gt), brand(b) {}
-
-    void displayInfo() override {
-        cout << "Gadget Type: " << gadgetType << ", Brand: " << brand << endl;
-        Item::displayInfo();
-    }
-
-    void swapItem(string newOwner) override {
-        cout << "Swapping gadget of type '" << gadgetType << "'...\n";
-        Item::swapItem(newOwner);
-    }
-};
-
+// User class to represent a system user
 class User {
 private:
     string name;
+    string email;
 
 public:
-    User(string n) : name(n) {}
+    User(string n, string e) : name(n), email(e) {}
 
-    string getName() {
-        return name;
-    }
+    string getName() { return name; }
+    string getEmail() { return email; }
 
     void requestSwap(Item* item) {
-        cout << name << " is requesting to swap the item.\n";
+        cout << name << " wants to swap.\n";
         item->swapItem(name);
     }
 
     void adjustPrice(Item* item, double newPrice) {
-        cout << name << " is adjusting the price of their item.\n";
+        cout << name << " is setting a new price.\n";
         item->setPrice(newPrice);
     }
 
     void viewSwapHistory(Item* item) {
-        cout << "Viewing swap history for " << name << "...\n";
+        cout << name << " is viewing swap history:\n";
         item->showSwapHistory();
     }
 };
 
-void displayItems(vector<Item*>& items) {
+// Search items based on category, price, and age
+void searchItems(vector<Item*>& items, string desiredCategory, double maxPrice, int maxAge) {
+    cout << "Searching items in category: " << desiredCategory
+         << " with max price: " << maxPrice
+         << " and max age: " << maxAge << " months\n";
+    bool found = false;
     for (auto item : items) {
-        item->displayInfo();
-        cout << "--------------------------\n";
+        if (item->getCategory() == desiredCategory && item->getPrice() <= maxPrice && item->getAge() <= maxAge) {
+            item->displayInfo();
+            found = true;
+        }
+    }
+
+    if (!found) {
+        cout << "No items match your search.\n";
     }
 }
 
-int main() {
-    vector<Item*> items;
+// Register a new user
+User* registerUser(unordered_map<string, User*>& users) {
+    string name, email;
+    cout << "Enter your name: ";
+    cin >> name;
+    cout << "Enter your email: ";
+    cin >> email;
 
-    items.push_back(new Book("John", "Good condition", "Used", 500.50, "The Great Gatsby", "F. Scott Fitzgerald"));
-    items.push_back(new Electronics("Sarah", "Almost new", "New", 23000.00, "iPhone X", "Apple"));
-    items.push_back(new Clothes("Alice", "Like new", "Used", 700.00, "M", "T-shirt"));
-    items.push_back(new Furniture("Tom", "Slightly worn", "Used", 5000.00, "Chair", "Wood"));
-    items.push_back(new Gadget("Emma", "Brand new", "New", 12000.00, "Smartwatch", "Samsung"));
+    try {
+        if (email.find('@') == string::npos || email.find('.') == string::npos) {
+            throw InvalidEmailException(); // Check if email is valid
+        }
 
-    cout << "Items available on UniSwap:\n";
+        if (users.find(name) == users.end()) {
+            User* newUser = new User(name, email);
+            users[name] = newUser;
+            cout << "User registered successfully.\n";
+            return newUser;
+        } else {
+            cout << "User already exists. Logging in...\n";
+            return users[name];
+        }
+    } catch (const InvalidEmailException& e) {
+        cout << e.what() << endl;
+        return nullptr;
+    }
+}
+
+// Display all items
+void displayItems(vector<Item*>& items) {
+    cout << setw(15) << left << "Owner"
+         << setw(25) << left << "Description"
+         << setw(15) << left << "Condition"
+         << setw(10) << left << "Price"
+         << setw(10) << left << "Age"
+         << "Availability" << endl;
+
+    for (auto item : items) {
+        item->displayInfo();
+    }
+}
+
+// Buy an item based on ID
+void buyItem(vector<Item*>& items, User* user) {
     displayItems(items);
+    int itemId;
+    cout << "Enter the item ID to buy: ";
+    cin >> itemId;
 
-    User user1("Michael");
-    User user2("Jessica");
+    if (itemId >= 0 && itemId < items.size() && items[itemId]->getAvailability()) {
+        user->requestSwap(items[itemId]);
+    } else {
+        cout << "Invalid item ID or not available.\n";
+    }
+}
 
-    cout << "\n--- Users requesting swaps and adjusting prices ---\n";
-    user1.requestSwap(items[0]);
-    user2.adjustPrice(items[1], 21000.00);
-    user2.requestSwap(items[1]);
+// Sell a new item
+void sellItem(vector<Item*>& items, User* user) {
+    int choice;
+    cout << "Select item type:\n1. Book\n2. Electronics\nEnter your choice: ";
+    cin >> choice;
 
-    cout << "\n--- Viewing Swap History ---\n";
-    user1.viewSwapHistory(items[0]);
-    user2.viewSwapHistory(items[1]);
+    string description, condition;
+    double price;
+    int age;
 
+    cout << "Enter description: ";
+    cin.ignore();
+    getline(cin, description);
+    cout << "Enter condition: ";
+    getline(cin, condition);
+    cout << "Enter price: ";
+    cin >> price;
+    cout << "Enter age (months): ";
+    cin >> age;
+
+    if (choice == 1) { // Book
+        string title, author;
+        cout << "Enter title: ";
+        cin.ignore();
+        getline(cin, title);
+        cout << "Enter author: ";
+        getline(cin, author);
+        items.push_back(new Book(user->getName(), description, condition, price, age, title, author));
+        cout << "Book added!\n";
+    } else if (choice == 2) { // Electronics
+        string model, brand;
+        cout << "Enter model: ";
+        cin.ignore();
+        getline(cin, model);
+        cout << "Enter brand: ";
+        getline(cin, brand);
+        items.push_back(new Electronics(user->getName(), description, condition, price, age, model, brand));
+        cout << "Electronics added!\n";
+    } else {
+        cout << "Invalid choice.\n";
+    }
+}
+
+// Main menu for user actions
+void menu(vector<Item*>& items, User* user) {
+    int choice;
+    do {
+        cout << "\n1. View all items\n2. Buy an item\n3. Sell an item\n4. Exit\nEnter choice: ";
+        cin >> choice;
+
+        switch (choice) {
+        case 1:
+            displayItems(items);
+            break;
+        case 2:
+            buyItem(items, user);
+            break;
+        case 3:
+            sellItem(items, user);
+            break;
+        case 4:
+            cout << "Exiting...\n";
+            break;
+        default:
+            cout << "Invalid choice.\n";
+            break;
+        }
+    } while (choice != 4);
+}
+
+// Program starts here
+int main() {
+    vector<Item*> items; // List of all items
+    unordered_map<string, User*> users; // User list
+
+    User* currentUser = nullptr;
+    while (currentUser == nullptr) {
+        currentUser = registerUser(users); // Register or log in
+    }
+
+    menu(items, currentUser); // Show main menu
+
+    // Clean up memory
     for (auto item : items) {
         delete item;
     }
+    for (auto& pair : users) {
+        delete pair.second;
+    }
 
     return 0;
-}
